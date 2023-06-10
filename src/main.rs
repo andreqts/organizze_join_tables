@@ -20,7 +20,6 @@ fn list_files_in_dir(fpath: &str) -> Vec<String> {
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    //println!("Hello, world with args [{:?}]!", args);
     for (i, arg) in args.iter().enumerate() {
         println!("Argument {i} -> '{arg}'");
     }
@@ -32,7 +31,7 @@ mod tests {
 
     #[test]
     fn test_list_dirs() {    
-        let vf  = list_files_in_dir(".\\testdir");
+        let vf  = list_files_in_dir(".\\tests\\testdir");
         let expected_results = [ "f1.txt", "f2.txt", "f3.txt" ];
         for (i, f) in vf.iter().enumerate() {
             let expected_file = expected_results[i];
