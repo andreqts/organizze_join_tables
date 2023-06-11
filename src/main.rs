@@ -21,21 +21,21 @@ fn list_files_in_dir(fpath: &str) -> Vec<String> {
 const REC_SIZE: usize = 6;
 fn append_csv_table_from_file(filepath: &str, dataset: &mut Vec<StringRecord>) -> Result<(), Box<dyn Error>> {
     // Build the CSV reader and iterate over each record.
-    println!("reading csv on '{filepath}'"); //TODOAQ: remover
     let mut rdr = csv::ReaderBuilder::new()
         .delimiter(b';')
         .flexible(true)
         .from_path(filepath)?;
 
+
     for result in rdr.records() {
-        // The iterator yields Result<StringRecord, Error>, so we check the
-        // error here.
         let rec = match result {
             Ok(record) => record,
-            Err(error) => panic!("Error reading csv in folder '{}': '{:?}'", filepath, error),
+            Err(error) => {
+                let err_desc = format!("Error: invalid file in '{}'", filepath).to_string();
+                return Err(err_desc.into());
+            }
         };
 
-        println!("rec = '{:?}'", rec); //TODOAQ:
         if rec.len() != REC_SIZE {
             let err_desc = format!("Error: invalid record size = {} - expected {REC_SIZE}", rec.len())
                 .to_string();
@@ -76,6 +76,14 @@ mod tests {
         assert!(res1.is_ok());
         assert_eq!(dataset.len(), 3);
     }
+
+    #[test]
+    fn test_read_invalid_dir() {
+        let mut dataset : Vec<StringRecord> = Vec::new();
+        let res2 = append_csv_table_from_file(".\\tests\\testcsv_invalid\\test.csv", &mut dataset);
+        assert!(res2.is_err());
+    }
+
     #[test]
     fn test_read_fake_csv() {
         let mut dataset : Vec<StringRecord> = Vec::new();
