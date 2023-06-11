@@ -1,5 +1,5 @@
-use std::env;
-use std::fs;
+use std::{error::Error, env, fs };
+use csv::StringRecord;
 
 fn list_files_in_dir(fpath: &str) -> Vec<String> {
     let mut vfiles: Vec<String> = Vec::new();
@@ -16,6 +16,35 @@ fn list_files_in_dir(fpath: &str) -> Vec<String> {
         vfiles.push(f.path().display().to_string());
     }
     vfiles
+}
+
+const REC_SIZE: usize = 6;
+fn append_csv_table_from_file(filepath: &str, dataset: &mut Vec<StringRecord>) -> Result<(), Box<dyn Error>> {
+    // Build the CSV reader and iterate over each record.
+    println!("reading csv on '{filepath}'"); //TODOAQ: remover
+    let mut rdr = csv::ReaderBuilder::new()
+        .delimiter(b';')
+        .flexible(true)
+        .from_path(filepath)?;
+
+    for result in rdr.records() {
+        // The iterator yields Result<StringRecord, Error>, so we check the
+        // error here.
+        let rec = match result {
+            Ok(record) => record,
+            Err(error) => panic!("Error reading csv in folder '{}': '{:?}'", filepath, error),
+        };
+
+        println!("rec = '{:?}'", rec); //TODOAQ:
+        if rec.len() != REC_SIZE {
+            let err_desc = format!("Error: invalid record size = {} - expected {REC_SIZE}", rec.len())
+                .to_string();
+            return Err(err_desc.into()); 
+        }
+        dataset.push(rec);
+    }
+    
+    Ok(())
 }
 
 fn main() {
@@ -38,4 +67,20 @@ mod tests {
             assert!(f.contains(expected_file));
         }
     }
+
+    //https://docs.rs/csv/latest/csv/
+    #[test]
+    fn test_read_csv() {
+        let mut dataset : Vec<StringRecord> = Vec::new();
+        let res1 = append_csv_table_from_file(".\\tests\\testcsv\\test.csv", &mut dataset);
+        assert!(res1.is_ok());
+        assert_eq!(dataset.len(), 3);
+    }
+    #[test]
+    fn test_read_fake_csv() {
+        let mut dataset : Vec<StringRecord> = Vec::new();
+        let res2 = append_csv_table_from_file(".\\tests\\testcsv\\test - missing 1 col.csv", &mut dataset);
+        assert!(res2.is_err());
+    }
+    
 }
