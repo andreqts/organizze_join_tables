@@ -82,5 +82,28 @@ mod tests {
         let res2 = append_csv_table_from_file(".\\tests\\testcsv\\test - missing 1 col.csv", &mut dataset);
         assert!(res2.is_err());
     }
+
+    #[test]
+    fn test_csv_table_append() {
+        let expected = vec![
+            StringRecord::from(vec!["05.04.2023", "Descricao despesa 1", "Transporte", "-65,66", "Não pago",""]),
+            StringRecord::from(vec!["05.03.2023", "Livro técnico", "Educação", "-421,66", "Não pago", ""]),
+            StringRecord::from(vec!["05.02.2023", "Aluguel", "Moradia", "66", "Pago", ""]),
+            StringRecord::from(vec!["05.07.2023", "Descricao despesa 3", "Saúde", "-1200,66", "Não pago", ""]), 
+            StringRecord::from(vec!["05.06.2023", "Curso UDEMY", "Educação", "-27,99", "Não pago", ""]),
+            StringRecord::from(vec!["05.05.2023", "NETFLIX", "Lazer", "24,90", "Pago", ""])
+        ];
+        let mut dataset : Vec<StringRecord> = Vec::new();
+        let res = append_csv_table_from_file(".\\tests\\testcsv\\test.csv", &mut dataset);
+        assert!(res.is_ok());
+        assert_eq!(dataset.len(), 3);
+        let res = append_csv_table_from_file(".\\tests\\testcsv\\test2.csv", &mut dataset);
+        assert!(res.is_ok());
+        assert_eq!(dataset.len(), 6);
+        for it in dataset.iter().zip(expected.iter()) {
+            let (data_read, data_exp) = it;
+            assert_eq!(data_read, data_exp);
+        }
+    }
     
 }
