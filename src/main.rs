@@ -31,7 +31,7 @@ fn append_csv_table_from_file(filepath: &str, dataset: &mut Vec<StringRecord>) -
         let rec = match result {
             Ok(record) => record,
             Err(error) => {
-                let err_desc = format!("Error: invalid file in '{}'", filepath).to_string();
+                let err_desc = format!("Error: invalid file in '{}' - {error}", filepath).to_string();
                 return Err(err_desc.into());
             }
         };
@@ -44,6 +44,35 @@ fn append_csv_table_from_file(filepath: &str, dataset: &mut Vec<StringRecord>) -
         dataset.push(rec);
     }
     
+    Ok(())
+}
+
+fn write_dataset_to_csv_file(filepath: &str, dataset: &Vec<StringRecord>) -> Result<(), Box<dyn Error>> {
+    let wtr = csv::WriterBuilder::new()
+        .delimiter(b';')
+        .quote_style(csv::QuoteStyle::Never)
+        .from_path(&filepath);
+    assert!(wtr.is_ok());
+    let mut wtr = wtr.unwrap();
+
+    let headerstr = vec!["Data","Descrição","Categoria","Valor","Situação","Informações adicionais\r"]; //TODOAQ: verificar...
+    let res = wtr.write_record(headerstr);
+    assert!(res.is_ok());
+    for row in dataset.iter() {
+        let mut rowstr: Vec<String> = Vec::new();
+        for (i, rec) in row.iter().enumerate() {
+            let mut recstr = rec.to_string();
+            if cfg!(windows) && i == (REC_SIZE - 1) {
+                recstr = recstr.clone() + "\r"; //add CRLF ending for windows
+            }
+            rowstr.push(recstr);
+        }
+
+        wtr.write_record(rowstr).expect("Error writing csv row in file {filepath}");
+    }
+
+    let r = wtr.flush();
+    assert!(r.is_ok());
     Ok(())
 }
 
@@ -107,11 +136,45 @@ mod tests {
         assert_eq!(dataset.len(), 3);
         let res = append_csv_table_from_file(".\\tests\\testcsv\\test2.csv", &mut dataset);
         assert!(res.is_ok());
-        assert_eq!(dataset.len(), 6);
+        assert_eq!(dataset.len(), expected.len());
         for it in dataset.iter().zip(expected.iter()) {
             let (data_read, data_exp) = it;
             assert_eq!(data_read, data_exp);
         }
     }
     
+    #[test]
+    fn test_csv_table_write() {
+        let expected = vec![
+            StringRecord::from(vec!["05.04.2023", "Descricao despesa 1", "Transporte", "-65,66", "Não pago",""]),
+            StringRecord::from(vec!["05.03.2023", "Livro técnico", "Educação", "-421,66", "Não pago", ""]),
+            StringRecord::from(vec!["05.02.2023", "Aluguel", "Moradia", "66", "Pago", ""]),
+            StringRecord::from(vec!["05.07.2023", "Descricao despesa 3", "Saúde", "-1200,66", "Não pago", ""]), 
+            StringRecord::from(vec!["05.06.2023", "Curso UDEMY", "Educação", "-27,99", "Não pago", ""]),
+            StringRecord::from(vec!["05.05.2023", "NETFLIX", "Lazer", "24,90", "Pago", ""])
+        ];
+        
+        let testdir: &str = ".\\tests\\testcsv";
+        let filename: &str = "joined.csv";
+        let joinedfilepath: String = format!("{}\\{}", testdir, filename);
+
+        // delete from previous tests if exist
+        let _ = fs::remove_file(&joinedfilepath);
+
+        let res = write_dataset_to_csv_file(&joinedfilepath, &expected);
+        assert!(res.is_ok());
+
+        let mut dataset : Vec<StringRecord> = Vec::new();
+        let res = append_csv_table_from_file(&joinedfilepath, &mut dataset);
+        assert!(res.is_ok());
+        assert_eq!(dataset.len(), expected.len());
+
+        for it in dataset.iter().zip(expected.iter()) {
+            let (data_read, data_exp) = it;
+            assert_eq!(data_read, data_exp);
+        }
+
+
+    }
+
 }
