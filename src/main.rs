@@ -1,5 +1,6 @@
 use std::{error::Error, fs };
 use csv::StringRecord;
+use std::path::PathBuf;
 
 use clap::Parser;
 
@@ -68,7 +69,7 @@ fn write_dataset_to_csv_file(filepath: &str, dataset: &Vec<StringRecord>) -> Res
     assert!(wtr.is_ok());
     let mut wtr = wtr.unwrap();
 
-    let headerstr = vec!["Data","Descrição","Categoria","Valor","Situação","Informações adicionais\r"]; //TODOAQ: verificar...
+    let headerstr = vec!["Data","Descrição","Categoria","Valor","Situação","Informações adicionais\r"]; //TODO: verificar...
     let res = wtr.write_record(headerstr);
     assert!(res.is_ok());
     for row in dataset.iter() {
@@ -89,7 +90,7 @@ fn write_dataset_to_csv_file(filepath: &str, dataset: &Vec<StringRecord>) -> Res
     Ok(())
 }
 
-fn main() {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Args::parse();
 
     let outfile = match cli.output {
@@ -97,7 +98,58 @@ fn main() {
         None => String::from("output.csv"),
     };
 
-    println!("Using output file = '{}'", outfile);
+    let current_dir = std::env::current_dir()?;
+
+    let mut count: usize = 0;
+    let mut inputfiles : Vec<PathBuf> = Vec::new();
+    // Iterate over each entry in the current directory
+    for entry in fs::read_dir(current_dir)? {
+        let entry = entry?;
+        let file_path = entry.path();
+
+        // Check if the entry is a file
+        if file_path.is_file() {
+            // Process the file here
+            let ext = match file_path.extension() {
+                Some(ext) => ext.to_string_lossy().to_string(),
+                None => String::from(""),
+            };
+
+            if ext == "csv" {
+                count += 1;
+                inputfiles.push(file_path);
+            }
+        }
+    }
+    print!("Found {} csv files...\n", count);
+    
+    let mut prevlines: usize = 0;
+    let mut dataset : Vec<StringRecord> = Vec::new();
+    for f in inputfiles.iter() {        
+        let res1 = append_csv_table_from_file(f.to_str().unwrap(), &mut dataset);
+        assert!(res1.is_ok());
+        let fname = f.file_name().unwrap().to_string_lossy().to_string();
+        let fpath = f.to_string_lossy().to_string();
+        let res = append_csv_table_from_file(&fpath, &mut dataset);
+        println!("{} lines processed for file {:?}...", dataset.len() - prevlines, fname);
+        prevlines = dataset.len();
+        assert!(res.is_ok());
+    }
+
+    // now writes the merged data to the output file
+    let cdir = std::env::current_dir()?;
+    let currdir  = cdir.to_string_lossy().to_string();
+    let joinedfilepath: String = format!("{}\\{}", currdir, outfile);
+
+    // delete from previous tests if exist
+    let _ = fs::remove_file(&joinedfilepath);
+
+    let res = write_dataset_to_csv_file(&joinedfilepath, &dataset);
+    assert!(res.is_ok());
+
+    print!("Done! Total of lines processed: {}\n", dataset.len());
+
+    Ok(()) 
 }
 
 
