@@ -1,5 +1,18 @@
-use std::{error::Error, env, fs };
+use std::{error::Error, fs };
 use csv::StringRecord;
+
+use clap::Parser;
+
+/// Simple program to greet a person
+#[derive(Parser, Debug)]
+#[command(author = "Andre Quites Ordovas Santos <andrequites@gmail.com>")]
+#[command(version = "0.1.0")]
+
+struct Args {
+    /// Output file name
+    #[arg(long)]
+    output: Option<String>,
+}
 
 fn list_files_in_dir(fpath: &str) -> Vec<String> {
     let mut vfiles: Vec<String> = Vec::new();
@@ -77,11 +90,17 @@ fn write_dataset_to_csv_file(filepath: &str, dataset: &Vec<StringRecord>) -> Res
 }
 
 fn main() {
-    let args: Vec<String> = env::args().collect();
-    for (i, arg) in args.iter().enumerate() {
-        println!("Argument {i} -> '{arg}'");
-    }
+    let cli = Args::parse();
+
+    let outfile = match cli.output {
+        Some(f) => f,
+        None => String::from("output.csv"),
+    };
+
+    println!("Using output file = '{}'", outfile);
 }
+
+
 
 #[cfg(test)]
 mod tests {
